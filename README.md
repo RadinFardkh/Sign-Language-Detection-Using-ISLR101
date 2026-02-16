@@ -1,4 +1,3 @@
 # School-project
 
-Still in progress .... :)\n
-Khaheshan ghalati nakonid
+Still in progress .... :)
