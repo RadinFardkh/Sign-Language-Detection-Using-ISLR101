@@ -1,101 +1,100 @@
-<h1 align="center">ISLR101: Iranian Word-Level Sign Language Recognition Dataset</h1>
+Sign Language Detector (OpenPose + OpenCV)
 
-<p align="center">
-  <b>
-    <span style="color:blue"> Hossein Ranjbar<sup>1</sup>, Alireza Taheri<sup>2</sup></span>
-  </b>
-</p>
+This version of sign-language-detector-python uses OpenPose BODY_18 keypoints via OpenCV DNN instead of MediaPipe.
 
-<p align="center">
-  <sup>1</sup> <span style="color:darkgreen">Department of Computational Linguistics, University of Zurich, Zurich, Switzerland</span> <br>
-  <sup>2</sup> <span style="color:darkgreen">Department of Mechanical Engineering, Sharif University of Technology, Tehran, Iran</span>
-</p>
+The pipeline is simple:
 
+Camera → OpenPose keypoints → ML classifier → realtime prediction
 
----
+Requirements
 
-## Introduction
+Python 3.8+
 
-we introduce ISLR101 dataset, the first publicly available
-Iranian Sign Language dataset for isolated sign language recognition. This comprehensive
-dataset includes 4,614 videos covering 101 distinct signs, recorded from 10 different signers,
-along with pose information extracted using OpenPose. We establish visual appearance-based
-and skeleton-based frameworks as baseline models, thoroughly training and evaluating them
-on ISLR101 to demonstrate their effectiveness.
+OpenCV (with DNN support)
 
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/a919d4c1-b0c2-4fac-9b94-3cbbf26343f8" alt="1" height="300">
-</div>
+NumPy, scikit-learn
 
-This repository provides a PyTorch-based implementation of **Skeleton-based sign language recognition**. 
+A webcam
 
-## Instalation
+Install dependencies (example):
 
-### 1. Clone this repository
+pip install opencv-python numpy scikit-learn
+Setup
+Download OpenPose model files
 
-```bash
-git clone https://github.com/HoseinRanjbar/ISLR101.git
-cd ISLR101
-```
+You must download the COCO OpenPose model manually:
 
-### 2. Download ISLR101 pose data
+pose_deploy_linevec.prototxt
 
-```bash
-mkdir data
-cd data
-wget https://drive.google.com/uc?export=download&id=1mqWgZJ7mJZEDyuK5lixC4g4ZUKa1ZKme
-wget https://drive.google.com/uc?export=download&id=1Q1Y1noTdG0pJSLecLqZnvt_fnNbs306I
-cd ..
-```
+pose_iter_440000.caffemodel
 
-### 3. Install dependent packages
-   
-```bash
-pip install -r requirements.txt
-```
+Place them anywhere you want (just remember the paths).
 
-## Usage
+Workflow
+1. Collect training images
 
-### 1. Test
-   
-To test the model on the ISLR101 dataset, use the following command:
+Capture labeled images for each sign class using your webcam:
 
-- ttr configuration:
+python collect_imgs.py \
+  --camera-index 0 \
+  --classes 3 \
+  --samples-per-class 100
 
-```bash
-./scripts/test_ttr.sh
-```
+Arguments
 
-- str configuration:
+--camera-index → webcam ID (usually 0)
 
-```bash
-./scripts/test_str.sh
-```
+--classes → number of sign classes
 
-- sttr1s configuration:
+--samples-per-class → images per class
 
-```bash
-./scripts/test_sttr1s.sh
-```
+Images will be saved automatically per class.
 
-### 2. Training
+2. Create keypoint dataset (OpenPose)
 
-To train the model on the ISLR101 dataset, use the following command:
+Convert images into BODY_18 keypoints and serialize them into a dataset:
 
-- ttr configuration:
+python create_dataset.py \
+  --proto /path/to/pose_deploy_linevec.prototxt \
+  --weights /path/to/pose_iter_440000.caffemodel
 
-```bash
-./scripts/train_ttr.sh
-```
+Output
 
-- str configuration:
+data.pickle containing extracted keypoints + labels
 
-```bash
-./scripts/train_str.sh
-```
+3. Train the classifier
 
-- sttr1s configuration:
+Train a simple ML model on the keypoint dataset:
 
-```bash
-./scripts/train_sttr1s.sh
-```
+python train_classifier.py
+
+Output
+
+model.p (trained classifier)
+
+4. Realtime inference
+
+Run live sign recognition using your webcam:
+
+python inference_classifier.py \
+  --proto /path/to/pose_deploy_linevec.prototxt \
+  --weights /path/to/pose_iter_440000.caffemodel \
+  --camera-index 0
+
+Press q to quit.
+
+Notes
+
+This implementation uses BODY_18 keypoints only (hands are inferred from body pose).
+
+Lighting and camera angle matter a lot—keep them consistent.
+
+For better accuracy, collect more samples per class.
+
+Why OpenPose?
+
+No MediaPipe dependency
+
+Works fully offline
+
+Easy to extend to other pose-based tasks
