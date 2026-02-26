@@ -34,6 +34,72 @@ The COCO OpenPose model must be downloaded manually:
 
 Place these files in any directory and note the paths — they are required by `create_dataset.py` and `inference_classifier.py`.
 
+## Quick Start with Make
+
+A `Makefile` is provided to run the full pipeline without memorising argument names.
+
+### See all available commands
+
+```bash
+make help
+```
+
+### Run the full training pipeline
+
+```bash
+make all \
+  PROTO=/path/to/pose_deploy_linevec.prototxt \
+  WEIGHTS=/path/to/pose_iter_440000.caffemodel
+```
+
+This executes `collect → dataset → train` in sequence.
+
+### Run individual steps
+
+```bash
+# 1. Capture training images
+make collect
+
+# 2. Extract keypoints  (OpenPose model paths required)
+make dataset PROTO=/path/to/pose_deploy_linevec.prototxt \
+             WEIGHTS=/path/to/pose_iter_440000.caffemodel
+
+# 3. Train the classifier
+make train
+
+# 4. Run real-time inference  (OpenPose model paths required)
+make infer PROTO=/path/to/pose_deploy_linevec.prototxt \
+           WEIGHTS=/path/to/pose_iter_440000.caffemodel
+```
+
+### Override defaults
+
+All tunable parameters can be set on the command line:
+
+| Variable | Default | Description |
+|---|---|---|
+| `PROTO` | *(required)* | Path to `pose_deploy_linevec.prototxt` |
+| `WEIGHTS` | *(required)* | Path to `pose_iter_440000.caffemodel` |
+| `CAMERA_INDEX` | `0` | Webcam device ID |
+| `CLASSES` | `3` | Number of sign classes to collect |
+| `SAMPLES` | `100` | Images captured per class |
+| `DATA_DIR` | `./data` | Directory where images are saved |
+| `THRESHOLD` | `0.1` | Keypoint confidence cutoff |
+
+```bash
+make collect CAMERA_INDEX=1 CLASSES=5 SAMPLES=200
+```
+
+### Clean up generated files
+
+```bash
+make clean
+```
+
+Removes `data.pickle` and `model.p`.
+
+---
+
 ## Workflow
 
 ### 1. Collect Training Images
