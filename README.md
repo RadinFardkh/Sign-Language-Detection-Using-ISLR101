@@ -1,3 +1,3 @@
 # Sign-Language-Detection-Using-ISLR101
 
-Still in progress .... :)
+This project still has not been ended and therefore may not accept any pull requests for now.
