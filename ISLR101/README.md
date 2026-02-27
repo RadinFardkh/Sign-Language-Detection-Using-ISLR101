@@ -1,100 +1,171 @@
-Sign Language Detector (OpenPose + OpenCV)
+# Sign Language Detector — OpenPose + OpenCV
 
-This version of sign-language-detector-python uses OpenPose BODY_18 keypoints via OpenCV DNN instead of MediaPipe.
+A real-time sign language recognition system that uses OpenPose BODY_18 keypoints extracted via OpenCV DNN as input features to a trained ML classifier.
 
-The pipeline is simple:
+> **Note:** This is a drop-in replacement for the MediaPipe-based variant. No MediaPipe dependency is required.
 
-Camera → OpenPose keypoints → ML classifier → realtime prediction
+## Pipeline
 
-Requirements
+```
+Webcam → OpenPose keypoint extraction → ML classifier → Real-time prediction
+```
 
-Python 3.8+
+## Requirements
 
-OpenCV (with DNN support)
+- Python 3.8+
+- OpenCV with DNN support
+- NumPy, scikit-learn
+- A webcam
 
-NumPy, scikit-learn
+Install dependencies:
 
-A webcam
-
-Install dependencies (example):
-
+```bash
 pip install opencv-python numpy scikit-learn
-Setup
-Download OpenPose model files
+```
 
-You must download the COCO OpenPose model manually:
+## Setup
 
-pose_deploy_linevec.prototxt
+### Download OpenPose Model Files
 
-pose_iter_440000.caffemodel
+The COCO OpenPose model must be downloaded manually:
 
-Place them anywhere you want (just remember the paths).
+- `pose_deploy_linevec.prototxt`
+- `pose_iter_440000.caffemodel`
 
-Workflow
-1. Collect training images
+Place these files in any directory and note the paths — they are required by `create_dataset.py` and `inference_classifier.py`.
+
+## Quick Start with Make
+
+A `Makefile` is provided to run the full pipeline without memorising argument names.
+
+### See all available commands
+
+```bash
+make help
+```
+
+### Run the full training pipeline
+
+```bash
+make all \
+  PROTO=/path/to/pose_deploy_linevec.prototxt \
+  WEIGHTS=/path/to/pose_iter_440000.caffemodel
+```
+
+This executes `collect → dataset → train` in sequence.
+
+### Run individual steps
+
+```bash
+# 1. Capture training images
+make collect
+
+# 2. Extract keypoints  (OpenPose model paths required)
+make dataset PROTO=/path/to/pose_deploy_linevec.prototxt \
+             WEIGHTS=/path/to/pose_iter_440000.caffemodel
+
+# 3. Train the classifier
+make train
+
+# 4. Run real-time inference  (OpenPose model paths required)
+make infer PROTO=/path/to/pose_deploy_linevec.prototxt \
+           WEIGHTS=/path/to/pose_iter_440000.caffemodel
+```
+
+### Override defaults
+
+All tunable parameters can be set on the command line:
+
+| Variable | Default | Description |
+|---|---|---|
+| `PROTO` | *(required)* | Path to `pose_deploy_linevec.prototxt` |
+| `WEIGHTS` | *(required)* | Path to `pose_iter_440000.caffemodel` |
+| `CAMERA_INDEX` | `0` | Webcam device ID |
+| `CLASSES` | `3` | Number of sign classes to collect |
+| `SAMPLES` | `100` | Images captured per class |
+| `DATA_DIR` | `./data` | Directory where images are saved |
+| `THRESHOLD` | `0.1` | Keypoint confidence cutoff |
+
+```bash
+make collect CAMERA_INDEX=1 CLASSES=5 SAMPLES=200
+```
+
+### Clean up generated files
+
+```bash
+make clean
+```
+
+Removes `data.pickle` and `model.p`.
+
+---
+
+## Workflow
+
+### 1. Collect Training Images
 
 Capture labeled images for each sign class using your webcam:
 
+```bash
 python collect_imgs.py \
   --camera-index 0 \
   --classes 3 \
   --samples-per-class 100
+```
 
-Arguments
+| Argument | Description |
+|---|---|
+| `--camera-index` | Webcam device ID (usually `0`) |
+| `--classes` | Number of sign classes to collect |
+| `--samples-per-class` | Number of images to capture per class |
 
---camera-index → webcam ID (usually 0)
+Images are saved automatically, organized by class.
 
---classes → number of sign classes
+### 2. Create Keypoint Dataset
 
---samples-per-class → images per class
+Extract BODY_18 keypoints from the collected images and serialize them into a dataset file:
 
-Images will be saved automatically per class.
-
-2. Create keypoint dataset (OpenPose)
-
-Convert images into BODY_18 keypoints and serialize them into a dataset:
-
+```bash
 python create_dataset.py \
   --proto /path/to/pose_deploy_linevec.prototxt \
   --weights /path/to/pose_iter_440000.caffemodel
+```
 
-Output
+**Output:** `data.pickle` — extracted keypoints with corresponding labels.
 
-data.pickle containing extracted keypoints + labels
+### 3. Train the Classifier
 
-3. Train the classifier
+Train an ML model on the keypoint dataset:
 
-Train a simple ML model on the keypoint dataset:
-
+```bash
 python train_classifier.py
+```
 
-Output
+**Output:** `model.p` — the serialized trained classifier.
 
-model.p (trained classifier)
+### 4. Run Real-Time Inference
 
-4. Realtime inference
+Start live sign recognition using your webcam:
 
-Run live sign recognition using your webcam:
-
+```bash
 python inference_classifier.py \
   --proto /path/to/pose_deploy_linevec.prototxt \
   --weights /path/to/pose_iter_440000.caffemodel \
   --camera-index 0
+```
 
-Press q to quit.
+Press `q` to quit.
 
-Notes
+## Notes
 
-This implementation uses BODY_18 keypoints only (hands are inferred from body pose).
+- This implementation uses **BODY_18 keypoints only**. Hand pose is inferred from body keypoints rather than dedicated hand tracking.
+- Consistent **lighting and camera angle** significantly affect accuracy — keep both stable across data collection and inference.
+- To improve model accuracy, increase `--samples-per-class` during data collection.
 
-Lighting and camera angle matter a lot—keep them consistent.
+## Why OpenPose?
 
-For better accuracy, collect more samples per class.
-
-Why OpenPose?
-
-No MediaPipe dependency
-
-Works fully offline
-
-Easy to extend to other pose-based tasks
+| Advantage | Details |
+|---|---|
+| No MediaPipe dependency | Eliminates an extra library requirement |
+| Fully offline | No network calls or cloud APIs needed |
+| Extensible | Easily adapted to other pose-based classification tasks |
